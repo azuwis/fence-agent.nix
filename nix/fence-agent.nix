@@ -12,11 +12,17 @@
   fd,
   file,
   findutils,
+  gawk,
+  gh,
   git,
   gnugrep,
   gnused,
   jq,
+  less,
+  python3,
   ripgrep,
+  tinyxxd,
+  unzip,
   which,
   bubblewrap,
   fence,
@@ -26,32 +32,56 @@
 {
   name, # wrapper name, e.g. "fence-claude"
   agentPackage, # the agent binary package, e.g. claude-code
+  agentWrapperArgs ? [ ], # makeWrapper args for agentPackage
   allowWrite, # filesystem paths writable inside sandbox, e.g. ["." "~/.claude"]
-  agentArgs ? "", # extra CLI args appended after the agent binary
   preExecScript ? "", # shell code to run before exec (mkdir, config init, etc.)
   fencePackages ? [
     bash
     cacert
-    agentPackage
     coreutils
     curl
     diffutils
     fd
     file
     findutils
+    gawk
+    gh
     git
     gnugrep
     gnused
     jq
+    less
+    python3
     ripgrep
+    tinyxxd
+    unzip
     which
   ], # packages available inside the sandbox
   extraFencePackages ? [ ], # additional packages to add to fencePackages
-  extraWrapperArgs ? [ ], # extra makeWrapper args for fenceShell
+  extraClosurePackages ? [ ], # additional packages to add to the closure, but not PATH
+  extraBashWrapperArgs ? [ ], # extra makeWrapper args for fenceShell bash
 }:
 
 let
-  allFencePackages = fencePackages ++ extraFencePackages;
+  wrappedAgentPackage =
+    if agentWrapperArgs == [ ] then
+      agentPackage
+    else
+      runCommand agentPackage.name
+        {
+          inherit (agentPackage) meta;
+          nativeBuildInputs = [
+            makeWrapper
+          ];
+          preferLocalBuild = true;
+        }
+        ''
+          exe="${lib.getExe agentPackage}"
+          makeWrapper "$exe" "$out/bin/$(basename "$exe")" \
+            ${lib.escapeShellArgs agentWrapperArgs}
+        '';
+
+  allFencePackages = fencePackages ++ extraFencePackages ++ [ wrappedAgentPackage ];
 
   fenceSettings =
     runCommand "fence.json"
@@ -60,7 +90,7 @@ let
         nativeBuildInputs = [ jq ];
         preferLocalBuild = true;
 
-        exportReferencesGraph.closure = allFencePackages ++ [ fenceShell ];
+        exportReferencesGraph.closure = allFencePackages ++ extraClosurePackages ++ [ fenceShell ];
 
         # https://github.com/Use-Tusk/fence/blob/main/docs/configuration.md
         # https://github.com/Use-Tusk/fence/tree/main/internal/templates
@@ -77,11 +107,16 @@ let
           filesystem = rec {
             StrictDenyRead = true;
             allowGitConfig = true;
-            # Also add to allowRead on Darwin for listing dir contents
+            # /etc/localtime is a symlink, fence resolves it and binds the
+            # target instead of creating the symlink path in the sandbox.
+            # Handle it on Linux in the bwrap wrapper below instead.
+            # On Darwin: also add to allowRead for dir listing of allowWrite paths
             allowRead = lib.optionals stdenv.hostPlatform.isDarwin (
               allowWrite
               ++ [
+                "/bin/sh"
                 "/etc/localtime"
+                "/usr/bin/env"
                 "/usr/share/locale"
               ]
             );
@@ -97,19 +132,19 @@ let
         ' "$NIX_ATTRS_JSON_FILE" > "$out"
       '';
 
-  makeWrapperArgs =
+  bashWrapperArgs =
     lib.optionals stdenv.hostPlatform.isLinux [
       "--set"
       "LOCALE_ARCHIVE"
       "${glibcLocales}/lib/locale/locale-archive"
     ]
-    ++ extraWrapperArgs
+    ++ extraBashWrapperArgs
     ++ [
       "--set"
       "LANG"
       "en_US.UTF-8"
       "--set"
-      "NIX_SSL_CERT_FILE"
+      "SSL_CERT_FILE"
       "${cacert}/etc/ssl/certs/ca-bundle.crt"
       "--set"
       "PATH"
@@ -130,13 +165,16 @@ let
       (
         ''
           makeWrapper "${lib.getExe bash}" "$out/bin/bash" \
-            ${lib.escapeShellArgs makeWrapperArgs}
+            ${lib.escapeShellArgs bashWrapperArgs}
         ''
         + lib.optionalString stdenv.hostPlatform.isLinux ''
           makeWrapper "${lib.getExe bubblewrap}" "$out/bin/bwrap" \
             --add-flags '--unshare-all --hostname fence' \
             --add-flags '--clearenv --setenv HOME "$HOME" --setenv TERM "$TERM"' \
-            --add-flags '--ro-bind /etc/localtime /etc/localtime'
+            --add-flags '--ro-bind /etc/localtime /etc/localtime' \
+            --add-flags '--ro-bind-try /etc/gitconfig /etc/gitconfig' \
+            --add-flags '--symlink ${lib.getExe bash} /bin/sh' \
+            --add-flags '--symlink ${lib.getExe' coreutils "env"} /usr/bin/env'
         ''
       );
 
@@ -165,7 +203,6 @@ writeShellApplication {
   # ShellApplication, so the setuid bwrap in system PATH is used, like
   # /run/wrappers/bin/bwrap in NixOS if exist
   text = ''
-    ${preExecScript}
     agent_args=()
     fence_args=()
     found_sep=false
@@ -181,7 +218,8 @@ writeShellApplication {
       fi
     done
 
+    ${preExecScript}
     exec ${lib.getExe fence} --settings ${fenceSettings} "''${fence_args[@]}" -- \
-      ${lib.getExe agentPackage} ${agentArgs} "''${agent_args[@]}"
+      ${lib.getExe wrappedAgentPackage} "''${agent_args[@]}"
   '';
 }
