@@ -1,5 +1,5 @@
 let
-  sources = import ./nix/sources.nix { };
+  sources = import ./sources.nix { };
   pkgs = import sources.nixpkgs {
     config.allowUnfreePredicate =
       pkg:
@@ -7,13 +7,10 @@ let
         "claude-code"
       ];
   };
-  fence-agent = pkgs.callPackage ./nix/fence-agent.nix { };
-  fence-claude = pkgs.callPackage ./nix/fence-claude.nix { inherit fence-agent; };
-  fence-pi = pkgs.callPackage ./nix/fence-pi.nix { inherit fence-agent; };
+  packages = pkgs.lib.packagesFromDirectoryRecursive {
+    inherit (pkgs) callPackage newScope;
+    directory = ./pkgs;
+  };
 in
 
-fence-claude
-// {
-  inherit fence-claude;
-  inherit fence-pi;
-}
+packages.fence-claude // packages

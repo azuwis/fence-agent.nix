@@ -13,7 +13,7 @@ Nix-based sandboxed environments for AI coding agents using [fence](https://gith
 - **Explicit tool allowlist** — only approved CLI tools (`bash`, `curl`, `fd`, `file`, `gh`, `git`, `jq`, `python3`, `ripgrep`, etc.) are accessible
 - **No network by default** - network access is opt-in via configuration
 - **Reproducible** - all dependencies are pinned with Nix
-- **Shared builder** - `nix/fence-agent.nix` is a reusable function for sandboxing any agent binary
+- **Shared builder** - `pkgs/fence-agent.nix` is a reusable function for sandboxing any agent binary
 
 ## Quick Start
 
@@ -69,5 +69,5 @@ All other filesystem access is denied by default.
 ## Updating Dependencies
 
 ```bash
-nix-instantiate --option tarball-ttl 1 --strict --eval --arg update true nix/sources.nix > sources.tmp && mv sources.tmp nix/sources.lock
+nix-instantiate --option tarball-ttl 1 --strict --eval --arg update true sources.nix > sources.tmp && mv sources.tmp sources.lock
 ```

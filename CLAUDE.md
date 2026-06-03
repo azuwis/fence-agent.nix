@@ -31,25 +31,25 @@ direnv allow  # First time only, then auto-loads on directory entry
 
 Update pinned dependencies:
 ```bash
-nix-instantiate --option tarball-ttl 1 --strict --eval --arg update true nix/sources.nix > sources.tmp && mv sources.tmp nix/sources.lock
+nix-instantiate --option tarball-ttl 1 --strict --eval --arg update true sources.nix > sources.tmp && mv sources.tmp sources.lock
 ```
 
 ## Architecture
 
-- `default.nix` - Main entry point, provides `fence-claude` and `fence-pi` packages
-- `nix/fence-agent.nix` - Shared sandbox builder used by `fence-claude.nix` and `fence-pi.nix`
-- `nix/fence-claude.nix` - Sandboxed Claude Code (uses `fence-agent`)
-- `nix/fence-pi.nix` - Sandboxed pi-coding-agent (uses `fence-agent`)
-- `nix/sources.nix` - Declarative dependency fetching (nixpkgs)
-- `nix/sources.lock` - Pinned dependency versions with commit hashes and narHashes
-- `nix/statusline.jq` - jq script for Claude Code statusline (cwd, model, context usage)
+- `default.nix` - Main entry point, uses `lib.packagesFromDirectoryRecursive` to auto-discover packages in `pkgs/`
+- `pkgs/fence-agent.nix` - Shared sandbox builder used by `fence-claude` and `fence-pi`
+- `pkgs/fence-claude/package.nix` - Sandboxed Claude Code (uses `fence-agent`)
+- `pkgs/fence-claude/statusline.jq` - jq script for Claude Code statusline (cwd, model, context usage)
+- `pkgs/fence-pi.nix` - Sandboxed pi-coding-agent (uses `fence-agent`)
+- `sources.nix` - Declarative dependency fetching (nixpkgs)
+- `sources.lock` - Pinned dependency versions with commit hashes and narHashes
 - `.envrc` - direnv configuration for automatic environment loading
 
-The project uses a custom Nix dependency management approach (via `nix/sources.nix`/`nix/sources.lock`) rather than Nix Flakes. When `update=false` (default), `sources.nix` reads pinned revisions from `sources.lock` and fetches tarballs by SHA256; when `update=true`, it fetches latest commits via `builtins.fetchGit` and writes new lock data to stdout.
+The project uses a custom Nix dependency management approach (via `sources.nix`/`sources.lock`) rather than Nix Flakes. When `update=false` (default), `sources.nix` reads pinned revisions from `sources.lock` and fetches tarballs by SHA256; when `update=true`, it fetches latest commits via `builtins.fetchGit` and writes new lock data to stdout.
 
 ### Sandbox Mechanism
 
-`nix/fence-agent.nix` is a reusable function that uses [fence](https://github.com/Use-Tusk/fence) with `bubblewrap` to sandbox an agent binary. Both `fence-claude` and `fence-pi` are built from it. The sandbox:
+`pkgs/fence-agent.nix` is a reusable function that uses [fence](https://github.com/Use-Tusk/fence) with `bubblewrap` to sandbox an agent binary. Both `fence-claude` and `fence-pi` are built from it. The sandbox:
 
 - Limits the tools available to the agent to an explicit allowlist: `bash`, `cacert`, `coreutils`, `curl`, `diffutils`, `fd`, `file`, `findutils`, `gawk`, `gh`, `git`, `gnugrep`, `gnused`, `jq`, `less`, `python3`, `ripgrep`, `tinyxxd`, `unzip`, `which`
 - Restricts filesystem access: strict deny-read by default, only the Nix closure and the configured `allowWrite` paths are accessible
@@ -65,5 +65,5 @@ The project uses a custom Nix dependency management approach (via `nix/sources.n
 
 ### Managed Dependencies
 
-One source is pinned in `nix/sources.lock`:
+One source is pinned in `sources.lock`:
 - **nixpkgs** (`nixos-26.05` branch) - base package set; `allowUnfreePredicate` enables `claude-code`
