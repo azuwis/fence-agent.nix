@@ -18,8 +18,12 @@ Nix-based sandboxed environments for AI coding agents using [fence](https://gith
 ## Quick Start
 
 ```bash
-# Without direnv
+# Without direnv (remote)
+nix run -f https://github.com/azuwis/fence-agent.nix/archive/master.tar.gz
+nix run -f https://github.com/azuwis/fence-agent.nix/archive/master.tar.gz fence-pi
+nix run -f https://github.com/azuwis/fence-agent.nix/archive/master.tar.gz fence-claude.shell
 
+# Without direnv (local)
 nix run -f .                                          # run Claude Code (default)
 nix run -f . fence-pi                                 # run pi-coding-agent
 nix run -f . fence-claude.shell                       # open a sandboxed shell

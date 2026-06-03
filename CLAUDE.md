@@ -10,7 +10,12 @@ This is a Nix-based development environment template that provides a sandboxed s
 
 Enter the development shell:
 
-Without direnv:
+Without direnv (remote):
+```bash
+nix run -f https://github.com/azuwis/fence-agent.nix/archive/master.tar.gz
+```
+
+Without direnv (local):
 ```bash
 nix run -f .                                          # run Claude Code (default)
 nix run -f . fence-pi                                 # run pi-coding-agent
