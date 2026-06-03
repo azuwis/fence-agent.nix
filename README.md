@@ -18,24 +18,21 @@ Nix-based sandboxed environments for AI coding agents using [fence](https://gith
 ## Quick Start
 
 ```bash
-# Add to PATH (with direnv)
+# Without direnv
+
+nix run -f .                                          # run Claude Code (default)
+nix run -f . fence-pi                                 # run pi-coding-agent
+nix run -f . fence-claude.shell                       # open a sandboxed shell
+
+# or via nix-build for scripting / passing arguments
+"$(nix-build --no-out-link)"/bin/fence-claude <claude_args> -- <fence_args>
+"$(nix-build --no-out-link -A fence-claude.shell)"/bin/fence-shell <fence_args>
+
+# With direnv
+
 direnv allow
-
-# Run Claude Code in the sandbox
-fence-claude
-
-# Run pi-coding-agent in the sandbox
-fence-pi
-
-# Pass arguments to agent and fence
 fence-claude <claude_args> -- <fence_args>
 fence-pi <agent_args> -- <fence_args>
-
-# Or run directly without direnv
-"$(nix-build --no-out-link)"/bin/fence-claude <claude_args> -- <fence_args>
-
-# Open a sandboxed shell (for inspecting/testing the sandbox)
-"$(nix-build --no-out-link -A fence-claude.shell)"/bin/fence-shell <fence_args>
 ```
 
 ## Configuration
