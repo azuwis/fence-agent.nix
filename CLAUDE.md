@@ -9,19 +9,17 @@ This is a Nix-based development environment template that provides a sandboxed s
 ## Development Environment
 
 Enter the development shell:
+
+Without direnv:
 ```bash
-# Automatic (with direnv installed)
+nix run -f .                                          # run Claude Code (default)
+nix run -f . fence-pi                                 # run pi-coding-agent
+nix run -f . fence-claude.shell                       # open a sandboxed shell
+```
+
+Or with direnv:
+```bash
 direnv allow  # First time only, then auto-loads on directory entry
-```
-
-Or run directly without direnv:
-```bash
-"$(nix-build --no-out-link)"/bin/fence-claude <claude_args> -- <fence_args>
-```
-
-Open a sandboxed shell (for inspecting/testing the sandbox environment):
-```bash
-"$(nix-build --no-out-link -A shell)"/bin/fence-shell <fence_args>
 ```
 
 ## Dependency Management
