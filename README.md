@@ -10,7 +10,7 @@ Nix-based sandboxed environments for AI coding agents using [fence](https://gith
 ## Features
 
 - **Sandboxed execution** - Agents run with restricted filesystem, network, and namespace isolation
-- **Explicit tool allowlist** - only approved CLI tools (`bash`, `curl`, `fd`, `file`, `git`, `jq`, `ripgrep`, etc.) are accessible
+- **Explicit tool allowlist** — only approved CLI tools (`bash`, `curl`, `fd`, `file`, `gh`, `git`, `jq`, `python3`, `ripgrep`, etc.) are accessible
 - **No network by default** - network access is opt-in via configuration
 - **Reproducible** - all dependencies are pinned with Nix
 - **Shared builder** - `nix/fence-agent.nix` is a reusable function for sandboxing any agent binary
